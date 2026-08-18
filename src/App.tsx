@@ -15,7 +15,10 @@ function App() {
 
   // Filter state
   const [avisFilter, setAvisFilter] = useState<string>('')
-  const [yearFilter, setYearFilter] = useState<string>('')
+  
+  // Tidsintervall state
+  const [intervalSize, setIntervalSize] = useState<number>(10)
+  const [selectedIntervals, setSelectedIntervals] = useState<string[]>([])
 
   // Søk state
   const [query, setQuery] = useState('')
@@ -51,30 +54,66 @@ function App() {
     })
   }, [])
 
-  // 2. Bygg unike lister for filter-dropdowns
+  // 2. Bygg unike lister for filter
   const uniqueAviser = useMemo(() => {
     const aviser = new Set(corpus.map(c => c.avis).filter(Boolean))
     return Array.from(aviser).sort()
   }, [corpus])
 
-  const uniqueYears = useMemo(() => {
-    // Forventer dato format YYYY-MM-DD
-    const years = new Set(corpus.map(c => c.dato.substring(0, 4)).filter(y => y.length === 4))
-    return Array.from(years).sort()
-  }, [corpus])
+  // Bygg dynamiske år-grupper (intervaller)
+  const yearGroups = useMemo(() => {
+    if (corpus.length === 0 || intervalSize < 1) return []
+    
+    const years = corpus.map(c => parseInt(c.dato.substring(0, 4))).filter(y => !isNaN(y))
+    const groups = new Set<string>()
+    
+    years.forEach(y => {
+      const start = Math.floor(y / intervalSize) * intervalSize
+      const end = start + intervalSize - 1
+      groups.add(`${start}-${end}`)
+    })
+    
+    return Array.from(groups).sort()
+  }, [corpus, intervalSize])
+
+  // Fjern valgte intervaller hvis interval-størrelsen endres (siden gruppene endres)
+  useEffect(() => {
+    setSelectedIntervals([])
+  }, [intervalSize])
+
+  const toggleInterval = (group: string) => {
+    setSelectedIntervals(prev => 
+      prev.includes(group) 
+        ? prev.filter(g => g !== group)
+        : [...prev, group]
+    )
+  }
 
   // 3. Filtrer korpuset
   const filteredCorpus = useMemo(() => {
     return corpus.filter(c => {
       const matchAvis = avisFilter ? c.avis === avisFilter : true
-      const matchYear = yearFilter ? c.dato.startsWith(yearFilter) : true
+      
+      let matchYear = true
+      if (selectedIntervals.length > 0 && intervalSize > 0) {
+        const y = parseInt(c.dato.substring(0, 4))
+        if (!isNaN(y)) {
+          const start = Math.floor(y / intervalSize) * intervalSize
+          const end = start + intervalSize - 1
+          const group = `${start}-${end}`
+          matchYear = selectedIntervals.includes(group)
+        } else {
+          matchYear = false
+        }
+      }
+      
       return matchAvis && matchYear
     })
-  }, [corpus, avisFilter, yearFilter])
+  }, [corpus, avisFilter, selectedIntervals, intervalSize])
 
   // 4. Utfør søk
   const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault() // Hindrer siden i å laste på nytt (og at søk skjer på tastetrykk)
+    e.preventDefault() 
     if (!query.trim()) return
     if (filteredCorpus.length === 0) {
       setError('Det filtrerte korpuset er tomt.')
@@ -85,7 +124,6 @@ function App() {
     setError('')
     try {
       const dhlabids = filteredCorpus.map(c => c.dhlabid)
-      
       const res = await fetchConcordances(query, dhlabids, windowSize, limit)
       setResults(res)
     } catch (err) {
@@ -111,29 +149,51 @@ function App() {
             {corpusLoading ? (
               <p className="text-sm text-gray-500 animate-pulse">Laster korpus (15MB)...</p>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-5">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Avis</label>
                   <select 
                     value={avisFilter}
                     onChange={(e) => setAvisFilter(e.target.value)}
-                    className="w-full text-sm border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                    className="w-full text-sm border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border bg-gray-50"
                   >
                     <option value="">-- Alle aviser --</option>
                     {uniqueAviser.map(a => <option key={a} value={a}>{a}</option>)}
                   </select>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Årstall</label>
-                  <select 
-                    value={yearFilter}
-                    onChange={(e) => setYearFilter(e.target.value)}
-                    className="w-full text-sm border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
-                  >
-                    <option value="">-- Alle år --</option>
-                    {uniqueYears.map(y => <option key={y} value={y}>{y}</option>)}
-                  </select>
+                <div className="border-t border-gray-100 pt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Grupper årstall (intervall)
+                  </label>
+                  <div className="flex items-center gap-2 mb-3">
+                    <input 
+                      type="number"
+                      min="1"
+                      max="100"
+                      value={intervalSize}
+                      onChange={(e) => setIntervalSize(Number(e.target.value) || 10)}
+                      className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                    <span className="text-xs text-gray-500">år pr. gruppe</span>
+                  </div>
+                  
+                  <div className="max-h-60 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+                    {yearGroups.map(group => (
+                      <label key={group} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer hover:bg-gray-50 p-1 rounded">
+                        <input 
+                          type="checkbox"
+                          checked={selectedIntervals.includes(group)}
+                          onChange={() => toggleInterval(group)}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        {group}
+                      </label>
+                    ))}
+                    {yearGroups.length === 0 && (
+                      <p className="text-xs text-gray-500">Ingen årstall funnet.</p>
+                    )}
+                  </div>
                 </div>
 
                 <div className="pt-4 border-t border-gray-100">
@@ -206,14 +266,14 @@ function App() {
                   <table className="w-full text-left">
                     <thead className="bg-gray-50 sticky top-0 border-b border-gray-100">
                       <tr>
-                        <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">URN</th>
+                        <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider w-48">URN</th>
                         <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Kontekst</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                       {results.map((row, idx) => (
                         <tr key={idx} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 text-xs text-gray-500 font-mono align-top w-48 break-all">
+                          <td className="px-6 py-4 text-xs text-gray-500 font-mono align-top break-all">
                             {row.urn}
                           </td>
                           <td 
