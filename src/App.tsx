@@ -8,6 +8,17 @@ interface CorpusItem {
   dato: string
 }
 
+function parseNbSearchQuery(q: string): string {
+  // Konverterer NEAR(ord1 ord2, 10) til "ord1 ord2"~10 (Elasticsearch/Solr syntax for NB.no)
+  const nearRegex = /NEAR\((.+?)\s*,\s*(\d+)\)/i;
+  const match = q.match(nearRegex);
+  if (match) {
+    const words = match[1].replace(/,/g, ' ').replace(/\s+/g, ' ').trim();
+    return `"${words}"~${match[2]}`;
+  }
+  return q;
+}
+
 function App() {
   // Korpus state
   const [corpus, setCorpus] = useState<CorpusItem[]>([])
@@ -280,25 +291,28 @@ function App() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      {results.map((row, idx) => (
-                        <tr key={idx} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 text-xs font-mono align-top break-all">
-                            <a 
-                              href={`https://nb.no/items/${row.urn}?searchText=${encodeURIComponent(lastSearchedQuery)}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-600 hover:text-blue-800 hover:underline transition-colors"
-                              title="Åpne i Nasjonalbiblioteket"
-                            >
-                              {row.urn}
-                            </a>
-                          </td>
-                          <td 
-                            className="px-6 py-4 text-sm text-gray-800"
-                            dangerouslySetInnerHTML={{ __html: row.conc }}
-                          />
-                        </tr>
-                      ))}
+                      {results.map((row, idx) => {
+                        const nbSearchText = parseNbSearchQuery(lastSearchedQuery);
+                        return (
+                          <tr key={idx} className="hover:bg-gray-50">
+                            <td className="px-6 py-4 text-xs font-mono align-top break-all">
+                              <a 
+                                href={`https://nb.no/items/${row.urn}?searchText=${encodeURIComponent(nbSearchText)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:text-blue-800 hover:underline transition-colors"
+                                title="Åpne i Nasjonalbiblioteket"
+                              >
+                                {row.urn}
+                              </a>
+                            </td>
+                            <td 
+                              className="px-6 py-4 text-sm text-gray-800"
+                              dangerouslySetInnerHTML={{ __html: row.conc }}
+                            />
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
