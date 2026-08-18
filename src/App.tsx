@@ -190,6 +190,25 @@ function App() {
                     />
                     <span className="text-xs text-gray-500">år pr. gruppe</span>
                   </div>
+
+                  {yearGroups.length > 0 && (
+                    <div className="flex gap-4 mb-3 text-xs">
+                      <button 
+                        type="button"
+                        onClick={() => setSelectedIntervals([...yearGroups])}
+                        className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
+                      >
+                        Velg alle
+                      </button>
+                      <button 
+                        type="button"
+                        onClick={() => setSelectedIntervals([])}
+                        className="text-gray-500 hover:text-gray-700 hover:underline font-medium"
+                      >
+                        Fjern alle
+                      </button>
+                    </div>
+                  )}
                   
                   <div className="max-h-60 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
                     {yearGroups.map(group => (
