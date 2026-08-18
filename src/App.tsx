@@ -22,6 +22,7 @@ function App() {
 
   // Søk state
   const [query, setQuery] = useState('')
+  const [lastSearchedQuery, setLastSearchedQuery] = useState('')
   const [windowSize, setWindowSize] = useState(20)
   const [limit, setLimit] = useState(500)
   
@@ -122,6 +123,7 @@ function App() {
 
     setSearchLoading(true)
     setError('')
+    setLastSearchedQuery(query)
     try {
       const dhlabids = filteredCorpus.map(c => c.dhlabid)
       const res = await fetchConcordances(query, dhlabids, windowSize, limit)
@@ -214,7 +216,14 @@ function App() {
                 <input
                   type="text"
                   value={query}
-                  onChange={(e) => setQuery(e.target.value)}
+                  onChange={(e) => {
+                    setQuery(e.target.value)
+                    if (e.target.value !== lastSearchedQuery) {
+                      // Rydder forrige resultat hvis brukeren endrer søkeord
+                      setResults([])
+                      setLastSearchedQuery('')
+                    }
+                  }}
                   placeholder="Skriv inn nøkkelord eller frase..."
                   disabled={corpusLoading}
                   className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
@@ -288,9 +297,9 @@ function App() {
               </div>
             )}
             
-            {!searchLoading && results.length === 0 && query && (
+            {!searchLoading && results.length === 0 && lastSearchedQuery && (
               <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100 text-center">
-                <p className="text-gray-500">Ingen treff for "{query}" i det valgte utvalget.</p>
+                <p className="text-gray-500">Ingen treff for "{lastSearchedQuery}" i det valgte utvalget.</p>
               </div>
             )}
           </section>
