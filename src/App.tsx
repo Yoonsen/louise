@@ -19,6 +19,9 @@ function App() {
 
   // Søk state
   const [query, setQuery] = useState('')
+  const [windowSize, setWindowSize] = useState(20)
+  const [limit, setLimit] = useState(500)
+  
   const [results, setResults] = useState<ConcordanceRow[]>([])
   const [searchLoading, setSearchLoading] = useState(false)
   const [error, setError] = useState('')
@@ -71,7 +74,7 @@ function App() {
 
   // 4. Utfør søk
   const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault() // Hindrer siden i å laste på nytt (og at søk skjer på tastetrykk)
     if (!query.trim()) return
     if (filteredCorpus.length === 0) {
       setError('Det filtrerte korpuset er tomt.')
@@ -83,9 +86,7 @@ function App() {
     try {
       const dhlabids = filteredCorpus.map(c => c.dhlabid)
       
-      // Merk: Hvis listen med dhlabids er hundretusenvis av rader, kan API-et 
-      // i noen tilfeller respondere med 413 Payload Too Large. Filtrering anbefales.
-      const res = await fetchConcordances(query, dhlabids)
+      const res = await fetchConcordances(query, dhlabids, windowSize, limit)
       setResults(res)
     } catch (err) {
       setError(String(err))
@@ -148,22 +149,49 @@ function App() {
         {/* Høyre kolonne: Søk og resultater */}
         <div className="md:col-span-3 space-y-6">
           <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <form onSubmit={handleSearch} className="flex gap-4">
-              <input
-                type="text"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Skriv inn nøkkelord eller frase..."
-                disabled={corpusLoading}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-              />
-              <button
-                type="submit"
-                disabled={searchLoading || corpusLoading || filteredCorpus.length === 0}
-                className="px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
-              >
-                {searchLoading ? 'Søker...' : 'Søk'}
-              </button>
+            <form onSubmit={handleSearch} className="flex flex-col gap-4">
+              <div className="flex gap-4">
+                <input
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Skriv inn nøkkelord eller frase..."
+                  disabled={corpusLoading}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                />
+                <button
+                  type="submit"
+                  disabled={searchLoading || corpusLoading || filteredCorpus.length === 0}
+                  className="px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                >
+                  {searchLoading ? 'Søker...' : 'Søk'}
+                </button>
+              </div>
+              
+              <div className="flex gap-6 text-sm text-gray-600 mt-2">
+                <label className="flex items-center gap-2">
+                  <span>Vindu (ord før/etter):</span>
+                  <input 
+                    type="number" 
+                    min="1" 
+                    max="100"
+                    value={windowSize}
+                    onChange={(e) => setWindowSize(Number(e.target.value))}
+                    className="w-20 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                </label>
+                <label className="flex items-center gap-2">
+                  <span>Maks treff (limit):</span>
+                  <input 
+                    type="number" 
+                    min="1" 
+                    max="5000"
+                    value={limit}
+                    onChange={(e) => setLimit(Number(e.target.value))}
+                    className="w-24 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                </label>
+              </div>
             </form>
             {error && <p className="text-red-500 mt-4 text-sm">{error}</p>}
           </section>
