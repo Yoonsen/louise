@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import Papa from 'papaparse'
-import { fetchConcordances, ConcordanceRow } from './api/dhlab'
+import { fetchConcordances, type ConcordanceRow } from './api/dhlab'
 
 interface CorpusItem {
   dhlabid: number
