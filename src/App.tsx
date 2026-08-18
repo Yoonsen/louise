@@ -25,7 +25,7 @@ function App() {
 
   // 1. Last inn CSV ved oppstart
   useEffect(() => {
-    Papa.parse<any>('/korpus.csv', {
+    Papa.parse<any>(`${import.meta.env.BASE_URL}korpus.csv`, {
       download: true,
       header: true,
       skipEmptyLines: true,
