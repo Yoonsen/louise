@@ -282,8 +282,16 @@ function App() {
                     <tbody className="divide-y divide-gray-100">
                       {results.map((row, idx) => (
                         <tr key={idx} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 text-xs text-gray-500 font-mono align-top break-all">
-                            {row.urn}
+                          <td className="px-6 py-4 text-xs font-mono align-top break-all">
+                            <a 
+                              href={`https://nb.no/items/${row.urn}?searchText=${encodeURIComponent(lastSearchedQuery)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:text-blue-800 hover:underline transition-colors"
+                              title="Åpne i Nasjonalbiblioteket"
+                            >
+                              {row.urn}
+                            </a>
                           </td>
                           <td 
                             className="px-6 py-4 text-sm text-gray-800"
