@@ -42,11 +42,23 @@ export async function fetchConcordances(
 
   const payload = await response.json();
   
-  // payload er typisk et array av array eller et liste-objekt avhengig av eksakt dhlab-API retur,
-  // men ifølge Garborg normaliseres det. Vi antar at det returnerer et array av objekter.
-  // Gitt pandas df.to_json(orient='records'), pleier det å være:
-  // [ { "dhlabid": "...", "urn": "...", "conc": "..." }, ... ]
-  return payload as ConcordanceRow[];
+  // payload fra dhlab er et Pandas DataFrame eksportert som et kolonne-objekt (dict),
+  // f.eks. { docid: { "0": 123 }, urn: { "0": "urn..." }, conc: { "0": "..." } }
+  // Vi må flate dette ut til et vanlig array av objekter.
+  const rows: ConcordanceRow[] = [];
+  
+  if (payload && payload.urn) {
+    const keys = Object.keys(payload.urn);
+    for (const key of keys) {
+      rows.push({
+        dhlabid: String(payload.docid?.[key] || ''),
+        urn: payload.urn[key] || '',
+        conc: payload.conc?.[key] || ''
+      });
+    }
+  }
+
+  return rows;
 }
 
 /**
